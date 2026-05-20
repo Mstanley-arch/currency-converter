@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Currency | 頂級磨砂玻璃匯率決策中心</title>
+    <meta name="description" content="Aura Currency 是一款融合暗黑科技美學的頂級貨幣換算計算機，支援一對多即時匯率矩陣、海外刷卡與換匯手續費試算、旅行預算分析與全功能離線操作，為出國旅遊與跨境交易提供精準決策。">
+    
+    <!-- Google Fonts: Outfit & Noto Sans TC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Style sheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- PWA Capabilities & Mobile Friendly Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+    <!-- Background glow elements -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation (Desktop) / Bottom Bar (Mobile) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon-wrap">
+                    <i data-lucide="refresh-cw" class="logo-icon animate-spin-slow"></i>
+                </div>
+                <span class="logo-text">AURA <span class="text-accent">CURRENCY</span></span>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="matrix" id="nav-btn-matrix">
+                    <i data-lucide="layout-grid"></i>
+                    <span>匯率換算矩陣</span>
+                </button>
+                <button class="nav-item" data-tab="trends" id="nav-btn-trends">
+                    <i data-lucide="trending-up"></i>
+                    <span>歷史波動圖表</span>
+                </button>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="status-dot online" id="status-dot"></span>
+                    <span class="status-text" id="status-text">連線正常</span>
+                </div>
+                <div class="app-version">v1.0.0 (Local)</div>
+            </div>
+        </aside>
+
+        <!-- Main Dashboard Content Area -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="dashboard-header">
+                <div class="header-info">
+                    <h1 class="header-title" id="main-header-title">即時匯率換算矩陣</h1>
+                    <p class="header-subtitle">單點輸入，全域實時同步轉換與走勢對照</p>
+                </div>
+                <div class="header-actions">
+                    <div class="update-time-wrap">
+                        <span class="time-label">最後更新：</span>
+                        <span class="time-value" id="last-update-time">讀取中...</span>
+                    </div>
+                    <button class="btn-icon" id="btn-refresh" title="立即手動更新匯率">
+                        <i data-lucide="rotate-cw" id="refresh-icon"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- TAB 1: INTEGRATED DUAL-LINE CURRENCY CALCULATOR -->
+            <section class="tab-panel active" id="panel-matrix">
+                <div class="calculator-layout-container">
+                    <!-- Master Glassmorphic Dual-Line Calculator -->
+                    <div class="master-calculator glass-panel">
+                        <!-- Display Screen -->
+                        <div class="master-calc-screen">
+                            <!-- Line 1: Primary Currency (Input/Expression) -->
+                            <div class="master-calc-row active" id="calc-row-primary">
+                                <div class="row-currency-trigger" id="calc-primary-selector">
+                                    <img src="https://flagcdn.com/w40/tw.png" class="flag-icon" id="calc-primary-flag" alt="TWD Flag">
+                                    <div class="row-currency-info">
+                                        <span class="row-currency-code" id="calc-primary-code">TWD</span>
+                                        <span class="row-currency-label">主要貨幣</span>
+                                    </div>
+                                    <i data-lucide="chevron-down" class="chevron-icon"></i>
+                                </div>
+                                <div class="row-value-wrapper">
+                                    <div class="row-expression" id="calc-primary-expr"></div>
+                                    <div class="row-value" id="calc-primary-val">1,000</div>
+                                </div>
+                            </div>
+
+                            <div class="screen-divider-wrapper">
+                                <div class="screen-divider"></div>
+                                <button class="btn-screen-swap" id="btn-screen-currency-swap" title="對調主副貨幣">
+                                    <i data-lucide="arrow-up-down"></i>
+                                </button>
+                            </div>
+
+                            <!-- Line 2: Secondary Currency (Live Converted Result) -->
+                            <div class="master-calc-row" id="calc-row-secondary">
+                                <div class="row-currency-trigger" id="calc-secondary-selector">
+                                    <img src="https://flagcdn.com/w40/us.png" class="flag-icon" id="calc-secondary-flag" alt="USD Flag">
+                                    <div class="row-currency-info">
+                                        <span class="row-currency-code" id="calc-secondary-code">USD</span>
+                                        <span class="row-currency-label">對比貨幣</span>
+                                    </div>
+                                    <i data-lucide="chevron-down" class="chevron-icon"></i>
+                                </div>
+                                <div class="row-value-wrapper">
+                                    <div class="row-value" id="calc-secondary-val">31.25</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4x5 Keypad Grid (Styled exact to the uploaded layout) -->
+                        <div class="master-calc-keypad">
+                            <button class="key-btn key-clear" data-key="C">C</button>
+                            <button class="key-btn key-op" data-key="back">←</button>
+                            <button class="key-btn key-op key-swap" data-key="swap" id="btn-calc-swap" title="切換主/副貨幣">
+                                <i data-lucide="arrow-up-down"></i>
+                            </button>
+                            <button class="key-btn key-op" data-key="/">÷</button>
+
+                            <button class="key-btn" data-key="7">7</button>
+                            <button class="key-btn" data-key="8">8</button>
+                            <button class="key-btn" data-key="9">9</button>
+                            <button class="key-btn key-op" data-key="*">×</button>
+
+                            <button class="key-btn" data-key="4">4</button>
+                            <button class="key-btn" data-key="5">5</button>
+                            <button class="key-btn" data-key="6">6</button>
+                            <button class="key-btn key-op" data-key="-">-</button>
+
+                            <button class="key-btn" data-key="1">1</button>
+                            <button class="key-btn" data-key="2">2</button>
+                            <button class="key-btn" data-key="3">3</button>
+                            <button class="key-btn key-op" data-key="+">+</button>
+
+                            <button class="key-btn" data-key="0">0</button>
+                            <button class="key-btn" data-key=".">.</button>
+                            <button class="key-btn" data-key="%">%</button>
+                            <button class="key-btn key-eval" data-key="=">=</button>
+                        </div>
+
+                        <!-- Integrated Calculator Footer -->
+                        <div class="master-calc-footer">
+                            <button class="footer-btn" id="btn-calc-refresh" title="手動更新匯率">
+                                <i data-lucide="rotate-cw" id="calc-refresh-icon"></i>
+                            </button>
+                            <div class="footer-status-center">
+                                <span class="footer-date" id="calc-footer-date">讀取中...</span>
+                                <span class="footer-rate-info" id="calc-footer-rate">1 TWD = 0.0320 USD</span>
+                            </div>
+                            <button class="footer-btn" id="btn-calc-info" title="編輯追蹤矩陣對照">
+                                <i data-lucide="plus-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right side: Mini Tracked Currencies Sidebar (on Desktop) -->
+                    <div class="mini-tracked-sidebar glass-panel" id="mini-tracked-panel">
+                        <div class="flex-between mb-4">
+                            <h3 style="margin-bottom:0;">匯率矩陣對照</h3>
+                            <button class="btn-text" id="btn-calc-manage-trigger" style="font-size:12px;">
+                                <i data-lucide="settings-2" style="width:14px;height:14px;"></i> 自訂追蹤
+                            </button>
+                        </div>
+                        <div class="mini-grid" id="mini-currency-grid">
+                            <!-- Mini cards injected here -->
+                            <div class="loading-spinner-wrap" style="padding: 20px;">
+                                <div class="spinner" style="width:24px;height:24px;border-width:2px;"></div>
+                                <p style="font-size:12px;margin-top:8px;">載入矩陣中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- TAB 3: HISTORICAL TRENDS -->
+            <section class="tab-panel" id="panel-trends">
+                <div class="glass-panel p-6">
+                    <div class="trends-header mb-6">
+                        <div class="trends-selectors">
+                            <div class="form-group flex-1 max-w-xs mr-4">
+                                <label class="form-label">基準貨幣</label>
+                                <select id="trends-base-currency" class="form-control">
+                                    <option value="TWD" selected>TWD - 新台幣</option>
+                                    <option value="USD">USD - 美元</option>
+                                    <option value="EUR">EUR - 歐元</option>
+                                </select>
+                            </div>
+                            <div class="trends-swap-btn-wrap">
+                                <button class="btn-trends-swap" id="btn-trends-currency-swap" title="對調基準與對比貨幣">
+                                    <i data-lucide="arrow-left-right"></i>
+                                </button>
+                            </div>
+                            <div class="form-group flex-1 max-w-xs mr-4">
+                                <label class="form-label">對比貨幣</label>
+                                <select id="trends-compare-currency" class="form-control">
+                                    <option value="JPY" selected>JPY - 日圓</option>
+                                    <option value="USD">USD - 美元</option>
+                                    <option value="EUR">EUR - 歐元</option>
+                                    <option value="KRW">KRW - 韓元</option>
+                                    <option value="CNY">CNY - 人民幣</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="width: 200px;">
+                                <label class="form-label">時間週期</label>
+                                <div class="btn-group-toggle">
+                                    <button class="toggle-btn active" data-period="30">30天</button>
+                                    <button class="toggle-btn" data-period="90">90天</button>
+                                    <button class="toggle-btn" data-period="365">1年</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="trend-stats-summary">
+                            <div class="trend-stat-box">
+                                <span class="stat-lbl">區間最高</span>
+                                <span class="stat-val text-green" id="trend-max-val">0.2200</span>
+                            </div>
+                            <div class="trend-stat-box">
+                                <span class="stat-lbl">區間最低</span>
+                                <span class="stat-val text-red" id="trend-min-val">0.2050</span>
+                            </div>
+                            <div class="trend-stat-box">
+                                <span class="stat-lbl">區間變幅</span>
+                                <span class="stat-val" id="trend-change-val">+3.4%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Beautiful Native SVG interactive chart container -->
+                    <div class="chart-container-outer">
+                        <div class="chart-y-axis" id="chart-y-axis">
+                            <!-- Injected dynamically -->
+                        </div>
+                        <div class="chart-wrapper">
+                            <svg class="trend-svg-chart" id="trend-svg" viewBox="0 0 1000 400" preserveAspectRatio="none">
+                                <defs>
+                                    <!-- Neon Gradient for chart area -->
+                                    <linearGradient id="chart-glow-grad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#06B6D4" stop-opacity="0.4" />
+                                        <stop offset="100%" stop-color="#06B6D4" stop-opacity="0.0" />
+                                    </linearGradient>
+                                    <!-- Neon stroke gradient -->
+                                    <linearGradient id="chart-stroke-grad" x1="0" y1="0" x2="1" y2="0">
+                                        <stop offset="0%" stop-color="#06B6D4" />
+                                        <stop offset="50%" stop-color="#10B981" />
+                                        <stop offset="100%" stop-color="#6366F1" />
+                                    </linearGradient>
+                                    <!-- Drop shadow for the line -->
+                                    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+                                        <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#06B6D4" flood-opacity="0.3"/>
+                                    </filter>
+                                </defs>
+                                
+                                <!-- Grid Lines -->
+                                <g id="chart-grid-lines" class="chart-grid"></g>
+                                
+                                <!-- Filled Area under the curve -->
+                                <path id="chart-area" d="" fill="url(#chart-glow-grad)"></path>
+                                
+                                <!-- Main Trend Line Curve -->
+                                <path id="chart-line" d="" fill="none" stroke="url(#chart-stroke-grad)" stroke-width="4.5" filter="url(#shadow)"></path>
+                                
+                                <!-- Hover interaction objects -->
+                                <line id="chart-hover-line" x1="0" y1="0" x2="0" y2="400" stroke="rgba(255, 255, 255, 0.2)" stroke-width="1.5" stroke-dasharray="4 4" style="display:none;"></line>
+                                <circle id="chart-hover-point" cx="0" cy="0" r="7" fill="#10B981" stroke="#fff" stroke-width="2.5" style="display:none; filter: drop-shadow(0 0 6px #10B981);"></circle>
+                            </svg>
+                            <div class="chart-hover-tooltip" id="chart-tooltip" style="display:none;">
+                                <div class="tooltip-date">2026-05-20</div>
+                                <div class="tooltip-rate">1 USD = 32.42 TWD</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-x-axis" id="chart-x-axis">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Currency Management Selection Modal -->
+    <div class="modal-backdrop" id="currency-modal">
+        <div class="modal-card glass-panel">
+            <header class="modal-header">
+                <h3>自訂追蹤貨幣矩陣</h3>
+                <button class="btn-close-modal" id="btn-close-modal">
+                    <i data-lucide="x"></i>
+                </button>
+            </header>
+            <div class="modal-body">
+                <p class="modal-subtitle">勾選您想要在主頁即時監控、換算的全球主要貨幣：</p>
+                <div class="currency-selection-list" id="modal-currency-list">
+                    <!-- Dynamic checkbox items will be injected by JavaScript -->
+                </div>
+            </div>
+            <footer class="modal-footer">
+                <button class="btn-secondary" id="btn-reset-currencies">恢復預設值</button>
+                <button class="btn-primary" id="btn-save-currencies">確認套用清單</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Quick Currency Switcher Bottom Sheet/Dropdown -->
+    <div class="modal-backdrop" id="base-switcher-modal">
+        <div class="modal-card glass-panel" style="max-width: 450px;">
+            <header class="modal-header">
+                <h3>選擇主要輸入貨幣</h3>
+                <button class="btn-close-modal" id="btn-close-base-modal">
+                    <i data-lucide="x"></i>
+                </button>
+            </header>
+            <div class="modal-body">
+                <div class="currency-selection-list search-compact" id="modal-base-list">
+                    <!-- Injected by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application core JS logic -->
+    <script src="app.js"></script>
+</body>
+</html>
