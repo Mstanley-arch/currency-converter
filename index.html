@@ -2,9 +2,23 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aura Currency | 頂級磨砂玻璃匯率決策中心</title>
-    <meta name="description" content="Aura Currency 是一款融合暗黑科技美學的頂級貨幣換算計算機，支援一對多即時匯率矩陣、海外刷卡與換匯手續費試算、旅行預算分析與全功能離線操作，為出國旅遊與跨境交易提供精準決策。">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aura 匯率計算機 | 即時換算 × 歷史走勢</title>
+    <meta name="description" content="支援 15 種主流貨幣即時換算，串接 Yahoo Finance 真實歷史匯率圖表，免費使用，可加入手機主畫面離線運作！出國旅遊、跨境交易必備工具。">
+
+    <!-- Open Graph (LINE / Facebook / Telegram preview card) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://currency-calculator-vert.vercel.app/">
+    <meta property="og:title" content="Aura 匯率計算機 | 即時換算 × 歷史走勢">
+    <meta property="og:description" content="支援 15 種主流貨幣即時換算，串接 Yahoo Finance 真實歷史匯率圖表，免費使用，可加入手機主畫面離線運作！出國旅遊、跨境交易必備工具。">
+    <meta property="og:image" content="https://currency-calculator-vert.vercel.app/icon-512.png">
+    <meta property="og:locale" content="zh_TW">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Aura 匯率計算機 | 即時換算 × 歷史走勢">
+    <meta name="twitter:description" content="支援 15 種主流貨幣即時換算，串接 Yahoo Finance 真實歷史匯率圖表，免費使用！">
+    <meta name="twitter:image" content="https://currency-calculator-vert.vercel.app/icon-512.png">
     
     <!-- Google Fonts: Outfit & Noto Sans TC -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,8 +56,12 @@
             
             <nav class="nav-menu">
                 <button class="nav-item active" data-tab="matrix" id="nav-btn-matrix">
-                    <i data-lucide="layout-grid"></i>
-                    <span>匯率換算矩陣</span>
+                    <i data-lucide="calculator"></i>
+                    <span>貨幣計算機</span>
+                </button>
+                <button class="nav-item mobile-only-tab" data-tab="matrix-list" id="nav-btn-matrix-list">
+                    <i data-lucide="list"></i>
+                    <span>多國匯率矩陣</span>
                 </button>
                 <button class="nav-item" data-tab="trends" id="nav-btn-trends">
                     <i data-lucide="trending-up"></i>
@@ -172,10 +190,31 @@
 
                     <!-- Right side: Mini Tracked Currencies Sidebar (on Desktop) -->
                     <div class="mini-tracked-sidebar glass-panel" id="mini-tracked-panel">
-                        <div class="flex-between mb-4">
+                        <!-- Context Bar: shows current calculation context -->
+                        <div class="matrix-context-bar" id="matrix-context-bar">
+                            <div class="context-currency-side">
+                                <img id="ctx-primary-flag" src="https://flagcdn.com/w40/tw.png" class="flag-icon ctx-flag" alt="">
+                                <div class="ctx-info">
+                                    <span class="ctx-code" id="ctx-primary-code">TWD</span>
+                                    <span class="ctx-amount" id="ctx-primary-amount">1,000</span>
+                                </div>
+                            </div>
+                            <div class="ctx-arrow">
+                                <i data-lucide="arrow-right"></i>
+                            </div>
+                            <div class="context-currency-side">
+                                <img id="ctx-secondary-flag" src="https://flagcdn.com/w40/us.png" class="flag-icon ctx-flag" alt="">
+                                <div class="ctx-info">
+                                    <span class="ctx-code" id="ctx-secondary-code">USD</span>
+                                    <span class="ctx-amount" id="ctx-secondary-amount">31.25</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-between mb-4" style="align-items: center;">
                             <h3 style="margin-bottom:0;">匯率矩陣對照</h3>
-                            <button class="btn-text" id="btn-calc-manage-trigger" style="font-size:12px;">
-                                <i data-lucide="settings-2" style="width:14px;height:14px;"></i> 自訂追蹤
+                            <button class="btn-primary" id="btn-calc-manage-trigger" style="padding: 6px 14px; font-size: 13px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 6px;">
+                                <i data-lucide="settings-2" style="width:14px;height:14px;"></i> 矩陣設定
                             </button>
                         </div>
                         <div class="mini-grid" id="mini-currency-grid">
@@ -218,12 +257,15 @@
                                     <option value="CNY">CNY - 人民幣</option>
                                 </select>
                             </div>
-                            <div class="form-group" style="width: 200px;">
+                            <div class="form-group">
                                 <label class="form-label">時間週期</label>
-                                <div class="btn-group-toggle">
-                                    <button class="toggle-btn active" data-period="30">30天</button>
-                                    <button class="toggle-btn" data-period="90">90天</button>
+                                <div class="btn-group-toggle" style="flex-wrap: wrap;">
+                                    <button class="toggle-btn" data-period="5">5天</button>
+                                    <button class="toggle-btn active" data-period="30">1個月</button>
+                                    <button class="toggle-btn" data-period="180">6個月</button>
+                                    <button class="toggle-btn" data-period="YTD">今年</button>
                                     <button class="toggle-btn" data-period="365">1年</button>
+                                    <button class="toggle-btn" data-period="1825">5年</button>
                                 </div>
                             </div>
                         </div>
@@ -239,6 +281,12 @@
                             <div class="trend-stat-box">
                                 <span class="stat-lbl">區間變幅</span>
                                 <span class="stat-val" id="trend-change-val">+3.4%</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                            <div class="data-source-badge" id="data-source-badge">
+                                <span class="pulse-dot" id="data-source-dot"></span>
+                                <span id="data-source-text">Data: Yahoo Finance</span>
                             </div>
                         </div>
                     </div>
@@ -332,6 +380,27 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Install Prompt Banner -->
+    <div id="install-banner" class="install-banner">
+        <div class="install-banner-content">
+            <div class="install-icon">Aura</div>
+            <div id="install-text" class="install-text"></div>
+            <button id="install-btn" class="btn-primary" style="padding: 6px 16px; font-size: 13px; border-radius: 20px;">安裝</button>
+        </div>
+        <button id="install-close" class="install-close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    </div>
+
+    <!-- PWA Update Toast -->
+    <div id="update-toast" class="update-toast">
+        <div class="update-toast-content">
+            <i data-lucide="download-cloud" class="update-icon"></i>
+            <span class="update-text">發現新版本！點擊立即更新</span>
+        </div>
+        <button id="btn-update-app" class="btn-primary" style="padding: 4px 12px; font-size: 12px; border-radius: 20px;">更新</button>
     </div>
 
     <!-- Application core JS logic -->

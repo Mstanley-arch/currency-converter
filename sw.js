@@ -1,12 +1,11 @@
-const CACHE_NAME = 'aura-cache-v1';
+const CACHE_NAME = 'aura-cache-v19';
 const ASSETS = [
-  './',
-  './index.html',
-  './style.css',
-  './app.js',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  '/',
+  '/style.css',
+  '/app.js',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 // Install: Pre-cache static shell assets
@@ -15,8 +14,15 @@ self.addEventListener('install', (e) => {
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Pre-caching static assets...');
       return cache.addAll(ASSETS);
-    }).then(() => self.skipWaiting())
+    })
   );
+});
+
+// Allow manual update via postMessage
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Activate: Clean up old caches
@@ -58,8 +64,12 @@ self.addEventListener('fetch', (e) => {
 
       // Fetch and cache dynamically for external scripts, styles, flags etc.
       return fetch(e.request).then((networkResponse) => {
+        // Do not cache opaque or redirected responses to prevent Safari issues
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && !e.request.url.startsWith('https://')) {
           return networkResponse;
+        }
+        if (networkResponse.redirected) {
+            return networkResponse;
         }
 
         const responseToCache = networkResponse.clone();
@@ -71,7 +81,7 @@ self.addEventListener('fetch', (e) => {
       }).catch(() => {
         // Safe fallback for offline requests
         if (e.request.mode === 'navigate') {
-          return caches.match('./index.html');
+          return caches.match('/');
         }
       });
     })

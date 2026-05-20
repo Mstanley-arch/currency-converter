@@ -57,10 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setupTabs();
 
     // Bind modales
+    // Bind modales
     setupModals();
 
     // Initial Fetch Rates
     fetchExchangeRates();
+
+    // LINE and Install Prompts
+    checkLineBrowser();
+    setTimeout(initInstallPrompt, 1500);
 
 
 
@@ -111,8 +116,12 @@ function setupTabs() {
 
     const headerContent = {
         matrix: {
-            title: '即時匯率換算矩陣',
+            title: '即時匯率計算機',
             subtitle: '單點輸入，全域實時同步轉換與走勢對照'
+        },
+        'matrix-list': {
+            title: '多國匯率矩陣',
+            subtitle: '自訂追蹤多國貨幣，一鍵即時對照換算結果'
         },
         planner: {
             title: '旅遊消費預算包',
@@ -134,11 +143,25 @@ function setupTabs() {
 
             // Toggle panels
             panels.forEach(p => p.classList.remove('active'));
-            document.getElementById(`panel-${tabId}`).classList.add('active');
+            
+            if (tabId === 'matrix-list') {
+                document.getElementById('panel-matrix').classList.add('active');
+                document.getElementById('panel-matrix').classList.add('show-list-only');
+            } else {
+                document.getElementById(`panel-${tabId}`).classList.add('active');
+                if (tabId === 'matrix') {
+                    document.getElementById('panel-matrix').classList.remove('show-list-only');
+                }
+            }
 
             // Update Header text
-            headerTitle.textContent = headerContent[tabId].title;
-            headerSubtitle.textContent = headerContent[tabId].subtitle;
+            if (headerContent[tabId]) {
+                headerTitle.textContent = headerContent[tabId].title;
+                headerSubtitle.textContent = headerContent[tabId].subtitle;
+            }
+
+            // Set body class for mobile CSS logic
+            document.body.className = `tab-active-${tabId}`;
 
             // Trigger redraw of trends if switched
             if (tabId === 'trends') {
@@ -146,6 +169,12 @@ function setupTabs() {
             }
         });
     });
+
+    // Force default tab state on first load to ensure CSS and Body classes sync properly
+    const defaultTab = document.querySelector('.nav-item.active') || document.querySelector('.nav-item[data-tab="matrix"]');
+    if (defaultTab) {
+        defaultTab.click();
+    }
 
     // Refresh button
     const refreshBtn = document.getElementById('btn-refresh');
@@ -155,9 +184,43 @@ function setupTabs() {
         fetchExchangeRates(true).then(() => {
             setTimeout(() => {
                 refreshIcon.classList.remove('animate-spin');
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                showToast(`✅ 匯率已手動同步至最新版本 (${hh}:${mm})`);
             }, 800);
         });
     });
+
+    // Mobile Matrix Context Bar Click -> Switch back to Calculator Tab
+    const matrixContextBar = document.getElementById('matrix-context-bar');
+    if (matrixContextBar) {
+        matrixContextBar.addEventListener('click', () => {
+            const calcBtn = document.getElementById('nav-btn-matrix');
+            if (calcBtn) {
+                calcBtn.click();
+            }
+        });
+    }
+}
+
+// Global Toast Notification
+function showToast(message) {
+    let toast = document.getElementById('app-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'app-toast';
+        toast.className = 'app-toast';
+        document.body.appendChild(toast);
+    }
+    
+    toast.textContent = message;
+    toast.classList.add('show');
+    
+    // Auto hide after 3s
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
 }
 
 // ==========================================================================
@@ -402,7 +465,7 @@ function setupTrends() {
         btn.addEventListener('click', () => {
             toggles.forEach(t => t.classList.remove('active'));
             btn.classList.add('active');
-            activePeriod = parseInt(btn.getAttribute('data-period'));
+            activePeriod = btn.getAttribute('data-period'); // remove parseInt so 'YTD' isn't parsed as NaN
             updateHistoricalChart();
         });
     });
@@ -425,50 +488,113 @@ function setupTrends() {
 }
 
 // Generate highly realistic mock historical trend values based on Brownian Walk
-function updateHistoricalChart() {
+async function updateHistoricalChart() {
     const base = document.getElementById('trends-base-currency').value;
     const compare = document.getElementById('trends-compare-currency').value;
+
+    const badgeText = document.getElementById('data-source-text');
+    const badgeDot = document.getElementById('data-source-dot');
 
     if (base === compare) {
         alert('請選擇不同的基準貨幣與對比貨幣進行走勢對照！');
         return;
     }
 
+    try {
+        const response = await fetch(`/api/yahoo?base=${base}&compare=${compare}&range=${activePeriod}`);
+        if (!response.ok) throw new Error('Proxy API response not ok');
+        const data = await response.json();
+        
+        const result = data.chart?.result?.[0];
+        if (!result) throw new Error('Invalid Yahoo data format');
+
+        const timestamps = result.timestamp;
+        const quotes = result.indicators.quote[0].close;
+        
+        const points = [];
+        for (let i = 0; i < timestamps.length; i++) {
+            if (quotes[i] !== null && quotes[i] !== undefined) {
+                // Yahoo timestamps are in seconds
+                const date = new Date(timestamps[i] * 1000).toISOString().split('T')[0];
+                points.push({
+                    date: date,
+                    rate: quotes[i]
+                });
+            }
+        }
+
+        if (points.length < 2) throw new Error('Not enough data points from Yahoo');
+
+        chartDataPoints = points;
+        
+        // Update Badge for Success
+        if (badgeText && badgeDot) {
+            badgeText.textContent = 'Data: Yahoo Finance (真實數據)';
+            badgeDot.className = 'pulse-dot';
+        }
+
+        drawSVGChart(points, base, compare);
+    } catch (error) {
+        console.warn('Yahoo Finance API fetch failed, falling back to mock data:', error);
+        
+        // Update Badge for Failure & show Toast
+        if (badgeText && badgeDot) {
+            badgeText.textContent = 'Data: 系統模擬走勢';
+            badgeDot.className = 'pulse-dot offline';
+        }
+        showToast('⚠️ 真實數據取得失敗，目前為系統模擬走勢');
+        
+        generateMockHistoricalChart(base, compare);
+    }
+}
+
+function generateMockHistoricalChart(base, compare) {
     // Calculate current relative rate e.g. 1 Base = X Compare
     let currentRate = 1.0;
     if (baseRates[base] && baseRates[compare]) {
         currentRate = baseRates[compare] / baseRates[base];
     }
 
-    // Generate random mock walk points based on days
-    const days = activePeriod;
+    // Determine days
+    let days = 30;
+    if (activePeriod === 'YTD') {
+        const now = new Date();
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+        days = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
+        if (days < 2) days = 2; // minimum 2 points for a line
+    } else {
+        days = parseInt(activePeriod) || 30;
+        if (days < 2) days = 2;
+    }
+
     const points = [];
-    let runningRate = currentRate * 0.96; // start slightly offset
     
-    // Seeded random walk generator
-    let seed = base.charCodeAt(0) + compare.charCodeAt(0) + days;
+    // Seeded random walk generator (deterministic per currency pair + period)
+    let seed = base.charCodeAt(0) * 31 + compare.charCodeAt(0) * 17 + days;
     const seededRandom = () => {
         const x = Math.sin(seed++) * 10000;
         return x - Math.floor(x);
     };
 
+    // Build walk BACKWARDS from today's real rate so the last point is always correct
+    const rawWalk = [currentRate];
+    for (let i = 1; i < days; i++) {
+        const changePercent = (seededRandom() - 0.49) * 0.008;
+        rawWalk.push(rawWalk[i - 1] / (1 + changePercent));
+    }
+    // Reverse so oldest is first, today is last
+    rawWalk.reverse();
+
     const now = new Date();
     for (let i = 0; i < days; i++) {
         const date = new Date();
         date.setDate(now.getDate() - (days - 1 - i));
-        
-        // Brownian motion: next rate equals current rate plus/minus a small drift
-        const changePercent = (seededRandom() - 0.49) * 0.008; 
-        runningRate = runningRate * (1 + changePercent);
-        
         points.push({
             date: date.toISOString().split('T')[0],
-            rate: runningRate
+            rate: rawWalk[i]
         });
     }
 
-    // Adjust last point to equal exact live currentRate
-    points[days - 1].rate = currentRate;
     chartDataPoints = points;
 
     // Draw SVG Chart
@@ -616,6 +742,7 @@ function drawSVGChart(points, base, compare) {
         tooltip.style.display = 'none';
     });
 }
+
 
 // ==========================================================================
 // 9. Modal Management Controllers
@@ -984,8 +1111,38 @@ function updateMasterCalcUI() {
         footerDate.textContent = `${lastUpdateTime.getFullYear()}/${lastUpdateTime.getMonth()+1}/${lastUpdateTime.getDate()} ${period} ${displayHour}:${mm}`;
     }
 
+    // Sync Matrix Context Bar (mobile matrix list tab)
+    updateContextBar();
+
     // Render Compact/Mini Grid on the right side
     renderMiniTrackedGrid();
+}
+
+function updateContextBar() {
+    const ctxPrimaryFlag = document.getElementById('ctx-primary-flag');
+    const ctxPrimaryCode = document.getElementById('ctx-primary-code');
+    const ctxPrimaryAmount = document.getElementById('ctx-primary-amount');
+    const ctxSecondaryFlag = document.getElementById('ctx-secondary-flag');
+    const ctxSecondaryCode = document.getElementById('ctx-secondary-code');
+    const ctxSecondaryAmount = document.getElementById('ctx-secondary-amount');
+
+    if (!ctxPrimaryFlag) return;
+
+    const primaryInfo = CURRENCIES[activeBaseCurrency] || { flag: 'tw' };
+    ctxPrimaryFlag.src = `https://flagcdn.com/w40/${primaryInfo.flag}.png`;
+    ctxPrimaryCode.textContent = activeBaseCurrency;
+    ctxPrimaryAmount.textContent = formatAmount(activeAmount, activeBaseCurrency);
+
+    const secondaryInfo = CURRENCIES[secondaryCurrency] || { flag: 'us' };
+    ctxSecondaryFlag.src = `https://flagcdn.com/w40/${secondaryInfo.flag}.png`;
+    ctxSecondaryCode.textContent = secondaryCurrency;
+
+    if (currentRates[secondaryCurrency]) {
+        const converted = activeAmount * currentRates[secondaryCurrency];
+        ctxSecondaryAmount.textContent = formatAmount(converted, secondaryCurrency);
+    } else {
+        ctxSecondaryAmount.textContent = '—';
+    }
 }
 
 function renderMiniTrackedGrid() {
@@ -1058,7 +1215,149 @@ function evaluateMath(expression) {
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-            .then((reg) => console.log('[PWA] Service Worker registered successfully:', reg.scope))
+            .then((reg) => {
+                console.log('[PWA] Service Worker registered successfully:', reg.scope);
+                
+                // Check if a new worker is already waiting
+                if (reg.waiting) {
+                    showUpdateToast(reg.waiting);
+                }
+                
+                // Listen for new workers installing
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        // Has network content finished downloading?
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            showUpdateToast(newWorker);
+                        }
+                    });
+                });
+            })
             .catch((err) => console.error('[PWA] Service Worker registration failed:', err));
+    });
+
+    // Reload the page when the new Service Worker takes control
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+        }
+    });
+}
+
+function showUpdateToast(worker) {
+    const toast = document.getElementById('update-toast');
+    const btn = document.getElementById('btn-update-app');
+    if (!toast || !btn) return;
+    
+    toast.classList.add('show');
+    
+    btn.onclick = () => {
+        toast.classList.remove('show');
+        // Tell the waiting worker to skip waiting and activate immediately
+        worker.postMessage({ type: 'SKIP_WAITING' });
+    };
+}
+
+// ==========================================================================
+// 11. LINE Browser Detection & Smart Install Prompt
+// ==========================================================================
+function checkLineBrowser() {
+    const ua = navigator.userAgent || navigator.vendor || window.opera;
+    if (ua.indexOf('Line') > -1) {
+        if (!window.location.search.includes('openExternalBrowser=1')) {
+            window.location.href = window.location.href + (window.location.href.includes('?') ? '&' : '?') + 'openExternalBrowser=1';
+        }
+        
+        // Overlay fallback
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100vw';
+        overlay.style.height = '100vh';
+        overlay.style.backgroundColor = 'rgba(15, 23, 42, 0.98)';
+        overlay.style.color = '#fff';
+        overlay.style.zIndex = '999999';
+        overlay.style.display = 'flex';
+        overlay.style.flexDirection = 'column';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.padding = '20px';
+        overlay.style.textAlign = 'center';
+        overlay.innerHTML = `
+            <div style="font-size: 60px; margin-bottom: 20px;">↗️</div>
+            <h2 style="color: var(--color-neon-mint); margin-bottom: 16px; font-weight: 600;">請以預設瀏覽器開啟</h2>
+            <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1;">
+                為了讓計算機能正常操作與全螢幕安裝<br><br>
+                請點擊右上角的 <b>[ ⋮ ]</b> 或 <b>[ ⍐ ]</b><br>
+                選擇 <b>「以預設瀏覽器開啟」</b><br>
+                (Safari 或 Chrome)
+            </p>
+        `;
+        document.body.appendChild(overlay);
+    }
+}
+
+function isIOS() {
+    return [
+      'iPad Simulator',
+      'iPhone Simulator',
+      'iPod Simulator',
+      'iPad',
+      'iPhone',
+      'iPod'
+    ].includes(navigator.platform)
+    || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+}
+
+function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+let deferredPrompt;
+function initInstallPrompt() {
+    if (isStandalone()) return; // Already installed or in PWA mode
+
+    const installBanner = document.getElementById('install-banner');
+    const installBtn = document.getElementById('install-btn');
+    const installClose = document.getElementById('install-close');
+    const installText = document.getElementById('install-text');
+    
+    if (!installBanner) return;
+
+    if (isIOS()) {
+        installText.innerHTML = '想要全螢幕無邊框體驗嗎？<br>👇 點擊下方的 <b>分享</b>，選擇 <b>加入主畫面</b>';
+        installBtn.style.display = 'none'; // iOS cannot trigger install via JS
+        installBanner.classList.add('show');
+        
+        installClose.addEventListener('click', () => {
+            installBanner.classList.remove('show');
+        });
+        return;
+    }
+
+    // Android/Desktop Chrome
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        installText.innerHTML = '安裝 <b>Aura 計算機</b><br>獲得零延遲的 App 級體驗！';
+        installBanner.classList.add('show');
+
+        installBtn.addEventListener('click', async () => {
+            installBanner.classList.remove('show');
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            }
+        });
+    });
+
+    installClose.addEventListener('click', () => {
+        installBanner.classList.remove('show');
     });
 }
